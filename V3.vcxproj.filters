@@ -55,9 +55,6 @@
     <Image Include="res\fourlegs.png">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="res\grass.png">
-      <Filter>Resource Files</Filter>
-    </Image>
     <Image Include="res\hat.png">
       <Filter>Resource Files</Filter>
     </Image>
@@ -71,6 +68,15 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="res\bubbles.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\sand.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\..\..\Downloads\grass.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\burger.png">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
