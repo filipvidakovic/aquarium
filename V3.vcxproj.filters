@@ -73,10 +73,16 @@
     <Image Include="res\sand.png">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="..\..\..\..\Downloads\grass.png">
+    <Image Include="res\burger.png">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="res\burger.png">
+    <Image Include="res\grass.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\chest-open.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\chest-closed.png">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

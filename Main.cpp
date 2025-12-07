@@ -60,20 +60,28 @@ unsigned goldfishTexture;
 unsigned clownfishTexture;
 unsigned bubblesTexture;
 unsigned burgerTexture;
-unsigned sandTexture; 
+unsigned sandTexture;
+unsigned grassTexture;
+float grassHeight = 0.15f;
 
-// Aquarium dimensions
+
+
 float aquariumLeft = -1.0f;
 float aquariumRight = 1.0f;
 float aquariumBottom = -1.0f;
 float aquariumTop = 0.2f;
-float sandHeight = 0.1f; // Height of sand layer
+float sandHeight = 0.2f;
 
+unsigned chestOpenTexture;
+unsigned chestClosedTexture;
+unsigned chestCurrentTexture;
+bool chestIsOpen = false; // false = closed, true = open
+float chestX = 0.0f;      // X position of chest (right side)
+float chestY = aquariumBottom + sandHeight / 2; // On sand
 float initialJumpTime = -1.0f;
 std::vector<Bubble> bubbles;
-std::vector<Food> foods;  // Food vector
+std::vector<Food> foods;
 
-// Movement speeds
 const float MOVEMENT_SPEED = 0.0005f;
 const float BUBBLE_COOLDOWN = 0.2f;
 const float FOOD_FALL_SPEED = 0.001f;
@@ -164,31 +172,26 @@ void updateFood(float deltaTime) {
     for (auto& food : foods) {
         if (food.active) {
             if (food.falling) {
-                // Move food downward
                 food.y -= food.speed;
 
-                // Check if food hits the ground (sand)
                 if (checkFoodGroundCollision(food)) {
                     food.falling = false;
                     food.onGround = true;
-                    food.y = aquariumBottom + sandHeight + food.size / 2; // Position on sand
+                    food.y = aquariumBottom + sandHeight - 0.07f;
                 }
 
-                // Check if fish eats the food while falling
                 if (checkFishFoodCollision(uX, uY, uS * 0.2f, food) ||
                     checkFishFoodCollision(cX, cY, cS * 0.2f, food)) {
                     food.active = false;
                 }
             }
 
-            // Check if fish eats food on ground
             if (food.onGround) {
                 if (checkFishFoodCollision(uX, uY, uS * 0.2f, food) ||
                     checkFishFoodCollision(cX, cY, cS * 0.2f, food)) {
                     food.active = false;
                 }
 
-                // Food disappears after 5 seconds on ground
                 if (glfwGetTime() - food.spawnTime > 5.0f) {
                     food.active = false;
                 }
@@ -198,18 +201,15 @@ void updateFood(float deltaTime) {
 }
 
 bool checkFishFoodCollision(float fishX, float fishY, float fishSize, const Food& food) {
-    // Simple circle-circle collision detection
     float distanceX = fishX - food.x;
     float distanceY = fishY - food.y;
     float distance = sqrt(distanceX * distanceX + distanceY * distanceY);
 
-    // Collision if distance is less than sum of radii
     return distance < (fishSize + food.size / 2);
 }
 
 bool checkFoodGroundCollision(const Food& food) {
-    // Food hits ground when it reaches sand level
-    return food.y <= (aquariumBottom + sandHeight + food.size / 2);
+    return food.y <= (aquariumBottom + sandHeight - 0.07f);
 }
 
 void updateBubbles(float deltaTime) {
@@ -429,12 +429,38 @@ void drawAquarium() {
     glDeleteVertexArrays(1, &VAO_right);
 }
 
+void drawGrass(unsigned int shader, unsigned int VAO_grass) {
+    glUseProgram(shader);
+
+    float grass1X = -0.6f;
+    float grass1Y = aquariumBottom + sandHeight / 2 + 0.1f;
+
+    glUniform1f(glGetUniformLocation(shader, "uX"), grass1X);
+    glUniform1f(glGetUniformLocation(shader, "uY"), grass1Y);
+    glUniform1f(glGetUniformLocation(shader, "uS"), 1.0f);
+    glUniform1f(glGetUniformLocation(shader, "uFlipX"), 1.0f);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, grassTexture);
+
+    glBindVertexArray(VAO_grass);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+    float grass2X = 0.6f; 
+    float grass2Y = aquariumBottom + sandHeight / 2 + 0.1f;
+
+    glUniform1f(glGetUniformLocation(shader, "uX"), grass2X);
+    glUniform1f(glGetUniformLocation(shader, "uY"), grass2Y);
+
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+}
+
 void drawBubble(unsigned int rectShader, unsigned int VAOrect, const Bubble& bubble) {
     glUseProgram(rectShader);
 
     glUniform1f(glGetUniformLocation(rectShader, "uX"), bubble.x);
     glUniform1f(glGetUniformLocation(rectShader, "uY"), bubble.y);
-    glUniform1f(glGetUniformLocation(rectShader, "uS"), bubble.size);
+    glUniform1f(glGetUniformLocation(rectShader, "uS"), 1.0f);
     glUniform1f(glGetUniformLocation(rectShader, "uFlipX"), 1.0f);
 
     glActiveTexture(GL_TEXTURE0);
@@ -444,12 +470,42 @@ void drawBubble(unsigned int rectShader, unsigned int VAOrect, const Bubble& bub
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 }
 
+void drawChest(unsigned int shader, unsigned int VAOrect) {
+    glUseProgram(shader);
+
+    glUniform1f(glGetUniformLocation(shader, "uX"), chestX);
+    glUniform1f(glGetUniformLocation(shader, "uY"), chestY);
+    glUniform1f(glGetUniformLocation(shader, "uS"), 1.0f);
+    glUniform1f(glGetUniformLocation(shader, "uFlipX"), 1.0f);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, chestCurrentTexture);
+
+    glBindVertexArray(VAOrect);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+}
+
+void drawSignatureRectangle(unsigned int colorShader, unsigned int VAOrect) {
+    glUseProgram(colorShader);
+
+    float nameX = -0.9f;
+    float nameY = 0.9f;
+    float nameWidth = 0.3f;
+    float nameHeight = 0.1f;
+
+    // Light blue rectangle with text
+    glUniform4f(glGetUniformLocation(colorShader, "uColor"), 0.7f, 0.8f, 1.0f, 0.8f);
+    glUniform1f(glGetUniformLocation(colorShader, "uX"), nameX);
+    glUniform1f(glGetUniformLocation(colorShader, "uY"), nameY);
+    glUniform1f(glGetUniformLocation(colorShader, "uScaleX"), nameWidth);
+    glUniform1f(glGetUniformLocation(colorShader, "uScaleY"), nameHeight);
+
+    glBindVertexArray(VAOrect);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+}
+
 void squish_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (action == GLFW_PRESS) {
-        if (key == GLFW_KEY_Q) {
-            uS = (uS == 1.0f) ? 0.5f : 1.0f;
-        }
-
         if (key == GLFW_KEY_SPACE && initialJumpTime < 0) {
             initialJumpTime = glfwGetTime();
         }
@@ -462,24 +518,12 @@ void squish_callback(GLFWwindow* window, int key, int scancode, int action, int 
             spawnBubble(cX, cY, 1);
         }
 
-        // ENTER key spawns food
         if (key == GLFW_KEY_ENTER) {
             spawnFood();
         }
-    }
-}
-
-void center_callback(GLFWwindow* window, int button, int action, int mods) {
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-        double xpos, ypos;
-        glfwGetCursorPos(window, &xpos, &ypos);
-
-        float xposNorm = (xpos / screenWidth) * 2 - 1;
-        float yposNorm = -((ypos / screenHeight) * 2 - 1);
-
-        if (xposNorm < 0.1 + uX && xposNorm > -0.1 + uX &&
-            yposNorm < 0.1 * uS + uY && yposNorm > -0.1 * uS + uY) {
-            uX = 0;
+        if (key == GLFW_KEY_C) {
+            chestIsOpen = !chestIsOpen;
+            chestCurrentTexture = chestIsOpen ? chestOpenTexture : chestClosedTexture;
         }
     }
 }
@@ -504,7 +548,7 @@ void processMovement(GLFWwindow* window) {
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
         uY -= MOVEMENT_SPEED;
-        uY = std::max(uY, aquariumBottom + sandHeight + 0.1f);
+        uY = std::max(uY, aquariumBottom + sandHeight - 0.05f);
     }
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
         uY += MOVEMENT_SPEED;
@@ -530,7 +574,7 @@ void processMovement(GLFWwindow* window) {
     }
     if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
         cY -= MOVEMENT_SPEED;
-        cY = std::max(cY, aquariumBottom + sandHeight + 0.1f);
+        cY = std::max(cY, aquariumBottom + sandHeight - 0.05f);
     }
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
         cY += MOVEMENT_SPEED;
@@ -552,7 +596,6 @@ int main()
     glfwMakeContextCurrent(window);
 
     glfwSetKeyCallback(window, squish_callback);
-    glfwSetMouseButtonCallback(window, center_callback);
 
     if (glewInit() != GLEW_OK) return endProgram("GLEW nije uspeo da se inicijalizuje.");
 
@@ -563,8 +606,12 @@ int main()
     preprocessTexture(goldfishTexture, "res/4-gold-fish-png-image.png");
     preprocessTexture(clownfishTexture, "res/clown-fish.png");
     preprocessTexture(bubblesTexture, "res/bubbles.png");
-    preprocessTexture(burgerTexture, "res/burger.png");    // Add burger texture
-    preprocessTexture(sandTexture, "res/sand.png");        // Add sand texture
+    preprocessTexture(burgerTexture, "res/burger.png");
+    preprocessTexture(sandTexture, "res/sand.png");
+    preprocessTexture(grassTexture, "res/grass.png");
+    preprocessTexture(chestOpenTexture, "res/chest-open.png");
+    preprocessTexture(chestClosedTexture, "res/chest-closed.png");
+    chestCurrentTexture = chestClosedTexture;
 
     // Create shaders
     rectShader = createShader("rect.vert", "rect.frag");
@@ -582,16 +629,30 @@ int main()
          0.1f, -0.1f, 1.0f, 0.0f,
          0.1f, 0.1f, 1.0f, 1.0f,
     };
+    float verticesSand[] = {
+     -1.0f, sandHeight, 0.0f, 1.0f,
+     -1.0f, -sandHeight, 0.0f, 0.0f,
+      1.0f, -sandHeight, 1.0f, 0.0f,
+      1.0f, sandHeight, 1.0f, 1.0f
+    };
+    float verticesGrass[] = {
+     -0.05f, 0.15f, 0.0f, 1.0f,
+     -0.05f, -0.15f, 0.0f, 0.0f,
+      0.05f, -0.15f, 1.0f, 0.0f,
+      0.05f, 0.15f, 1.0f, 1.0f
+    };
 
     // Create VAOs
     unsigned int VAO_fish;
     unsigned int VAO_grass;
     unsigned int VAO_bubbles;
-    unsigned int VAO_food;  // Separate VAO for food (but same shape)
+    unsigned int VAO_food;
+    unsigned int VAO_sand;
     formVAOs(verticesRect, sizeof(verticesRect), VAO_fish);
-    formVAOs(verticesRect, sizeof(verticesRect), VAO_grass);
     formVAOs(verticesRect, sizeof(verticesRect), VAO_bubbles);
     formVAOs(verticesRect, sizeof(verticesRect), VAO_food);
+    formVAOs(verticesSand, sizeof(verticesSand), VAO_sand);
+    formVAOs(verticesGrass, sizeof(verticesGrass), VAO_grass);
 
     glClearColor(0.9f, 0.9f, 0.9f, 1.0f);
 
@@ -605,30 +666,29 @@ int main()
 
         processMovement(window);
         updateBubbles(deltaTime);
-        updateFood(deltaTime);  // Update food physics
+        updateFood(deltaTime);
 
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // Draw aquarium (water, glass, borders)
         drawAquarium();
 
-        // Draw sand (on bottom, under water)
-        drawSand(rectShader, VAO_fish);
+        drawSand(rectShader, VAO_sand);
 
         drawGrass(rectShader, VAO_grass);
 
-        // Draw food
+        drawChest(rectShader, VAO_fish);
+
+        drawSignatureRectangle(rectShader, VAO_fish);
+
         for (const auto& food : foods) {
             if (food.active) {
                 drawFood(rectShader, VAO_food, food);
             }
         }
 
-        // Draw fish (on top of water and sand)
         drawRect(rectShader, VAO_fish, uX, uY, uS, uFlipX, goldfishTexture);
         drawRect(rectShader, VAO_fish, cX, cY, cS, cFlipX, clownfishTexture);
 
-        // Draw bubbles (on top of everything)
         for (const auto& bubble : bubbles) {
             if (bubble.active) {
                 drawBubble(rectShader, VAO_bubbles, bubble);

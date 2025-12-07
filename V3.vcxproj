@@ -139,14 +139,16 @@
     <ClInclude Include="Util.h" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="..\..\..\..\Downloads\grass.png" />
     <Image Include="res\4-gold-fish-png-image.png" />
     <Image Include="res\bubbles.png" />
     <Image Include="res\burger.png" />
+    <Image Include="res\chest-closed.png" />
+    <Image Include="res\chest-open.png" />
     <Image Include="res\clown-fish.png" />
     <Image Include="res\cursor.png" />
     <Image Include="res\cursorpress.png" />
     <Image Include="res\fourlegs.png" />
+    <Image Include="res\grass.png" />
     <Image Include="res\hat.png" />
     <Image Include="res\sand.png" />
     <Image Include="res\twolegs.png" />
