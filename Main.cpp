@@ -62,9 +62,12 @@ unsigned bubblesTexture;
 unsigned burgerTexture;
 unsigned sandTexture;
 unsigned grassTexture;
+unsigned anchorTexture;
 float grassHeight = 0.15f;
 
-
+// Mouse cursor position
+float cursorX = 0.0f;
+float cursorY = 0.0f;
 
 float aquariumLeft = -1.0f;
 float aquariumRight = 1.0f;
@@ -72,6 +75,7 @@ float aquariumBottom = -1.0f;
 float aquariumTop = 0.2f;
 float sandHeight = 0.2f;
 
+unsigned signatureTexture;
 unsigned chestOpenTexture;
 unsigned chestClosedTexture;
 unsigned chestCurrentTexture;
@@ -85,7 +89,7 @@ std::vector<Food> foods;
 const float MOVEMENT_SPEED = 0.0005f;
 const float BUBBLE_COOLDOWN = 0.2f;
 const float FOOD_FALL_SPEED = 0.001f;
-const float FOOD_SIZE = 0.15f;  // Size of burger
+const float FOOD_SIZE = 0.15f;
 float lastBubbleTime = 0.0f;
 
 // Shader programs
@@ -98,6 +102,14 @@ void updateFood(float deltaTime);
 void drawFood(unsigned int shader, unsigned int VAO);
 bool checkFishFoodCollision(float fishX, float fishY, float fishSize, const Food& food);
 bool checkFoodGroundCollision(const Food& food);
+void drawAnchorCursor(unsigned int shader, unsigned int VAO);
+
+// Mouse position callback
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
+    // Convert pixel coordinates to normalized OpenGL coordinates
+    cursorX = (xpos / screenWidth) * 2.0f - 1.0f;
+    cursorY = -((ypos / screenHeight) * 2.0f - 1.0f); // Flip Y axis
+}
 
 void spawnBubble(float fishX, float fishY, int fishSource) {
     float currentTime = glfwGetTime();
@@ -168,6 +180,8 @@ void spawnFood() {
     }
 }
 
+const float GROWTH_PER_FOOD = 0.01f;
+
 void updateFood(float deltaTime) {
     for (auto& food : foods) {
         if (food.active) {
@@ -180,16 +194,24 @@ void updateFood(float deltaTime) {
                     food.y = aquariumBottom + sandHeight - 0.07f;
                 }
 
-                if (checkFishFoodCollision(uX, uY, uS * 0.2f, food) ||
-                    checkFishFoodCollision(cX, cY, cS * 0.2f, food)) {
+                if (checkFishFoodCollision(uX, uY, uS * 0.2f, food)) {
                     food.active = false;
+                    uS += GROWTH_PER_FOOD;
+                }
+                else if (checkFishFoodCollision(cX, cY, cS * 0.2f, food)) {
+                    food.active = false;
+                    cS += GROWTH_PER_FOOD;
                 }
             }
 
             if (food.onGround) {
-                if (checkFishFoodCollision(uX, uY, uS * 0.2f, food) ||
-                    checkFishFoodCollision(cX, cY, cS * 0.2f, food)) {
+                if (checkFishFoodCollision(uX, uY, uS * 0.2f, food)) {
                     food.active = false;
+                    uS += GROWTH_PER_FOOD;
+                }
+                else if (checkFishFoodCollision(cX, cY, cS * 0.2f, food)) {
+                    food.active = false;
+                    cS += GROWTH_PER_FOOD;
                 }
 
                 if (glfwGetTime() - food.spawnTime > 5.0f) {
@@ -446,7 +468,7 @@ void drawGrass(unsigned int shader, unsigned int VAO_grass) {
     glBindVertexArray(VAO_grass);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
-    float grass2X = 0.6f; 
+    float grass2X = 0.6f;
     float grass2Y = aquariumBottom + sandHeight / 2 + 0.1f;
 
     glUniform1f(glGetUniformLocation(shader, "uX"), grass2X);
@@ -489,7 +511,7 @@ void drawSignatureRectangle(unsigned int colorShader, unsigned int VAOrect) {
     glUseProgram(colorShader);
 
     float nameX = -0.9f;
-    float nameY = 0.9f;
+    float nameY = 0.8f;
     float nameWidth = 0.3f;
     float nameHeight = 0.1f;
 
@@ -499,10 +521,14 @@ void drawSignatureRectangle(unsigned int colorShader, unsigned int VAOrect) {
     glUniform1f(glGetUniformLocation(colorShader, "uY"), nameY);
     glUniform1f(glGetUniformLocation(colorShader, "uScaleX"), nameWidth);
     glUniform1f(glGetUniformLocation(colorShader, "uScaleY"), nameHeight);
+    
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, signatureTexture);
 
     glBindVertexArray(VAOrect);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 }
+
 
 void squish_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (action == GLFW_PRESS) {
@@ -524,6 +550,10 @@ void squish_callback(GLFWwindow* window, int key, int scancode, int action, int 
         if (key == GLFW_KEY_C) {
             chestIsOpen = !chestIsOpen;
             chestCurrentTexture = chestIsOpen ? chestOpenTexture : chestClosedTexture;
+        }
+        if (key == GLFW_KEY_ESCAPE) {
+            endProgram("Exited on Escape");
+            exit(0);
         }
     }
 }
@@ -582,6 +612,8 @@ void processMovement(GLFWwindow* window) {
     }
 }
 
+GLFWcursor* cursor;
+
 int main()
 {
     srand(static_cast<unsigned>(time(0)));
@@ -596,6 +628,13 @@ int main()
     glfwMakeContextCurrent(window);
 
     glfwSetKeyCallback(window, squish_callback);
+    glfwSetCursorPosCallback(window, cursor_position_callback);
+
+    cursor = loadImageToCursor("res/anchor.png");
+    glfwSetCursor(window, cursor);
+
+    // Hide default cursor
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
     if (glewInit() != GLEW_OK) return endProgram("GLEW nije uspeo da se inicijalizuje.");
 
@@ -611,6 +650,7 @@ int main()
     preprocessTexture(grassTexture, "res/grass.png");
     preprocessTexture(chestOpenTexture, "res/chest-open.png");
     preprocessTexture(chestClosedTexture, "res/chest-closed.png");
+    preprocessTexture(signatureTexture, "res/signature-cyrillic.png");
     chestCurrentTexture = chestClosedTexture;
 
     // Create shaders
@@ -694,6 +734,8 @@ int main()
                 drawBubble(rectShader, VAO_bubbles, bubble);
             }
         }
+
+        // Draw anchor cursor (LAST so it's on top of everything)
 
         glfwSwapBuffers(window);
         glfwPollEvents();

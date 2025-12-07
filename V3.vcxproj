@@ -140,6 +140,7 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\4-gold-fish-png-image.png" />
+    <Image Include="res\anchor.png" />
     <Image Include="res\bubbles.png" />
     <Image Include="res\burger.png" />
     <Image Include="res\chest-closed.png" />
@@ -151,6 +152,8 @@
     <Image Include="res\grass.png" />
     <Image Include="res\hat.png" />
     <Image Include="res\sand.png" />
+    <Image Include="res\signature-cyrillic.png" />
+    <Image Include="res\signature.png" />
     <Image Include="res\twolegs.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
