@@ -126,31 +126,92 @@ unsigned loadImageToTexture(const char* filePath) {
     }
 }
 
-GLFWcursor* loadImageToCursor(const char* filePath) {
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+GLFWcursor* loadImageToCursor(const char* filePath, float scale) {
     int TextureWidth;
     int TextureHeight;
     int TextureChannels;
 
-    unsigned char* ImageData = stbi_load(filePath, &TextureWidth, &TextureHeight, &TextureChannels, 0);
+    unsigned char* ImageData = stbi_load(filePath, &TextureWidth, &TextureHeight, &TextureChannels, 4);
 
     if (ImageData != NULL)
     {
-        GLFWimage image;
-        image.width = TextureWidth;
-        image.height = TextureHeight;
-        image.pixels = ImageData;
+        float diagonal = sqrtf(TextureWidth * TextureWidth + TextureHeight * TextureHeight);
+        int canvasSize = static_cast<int>(diagonal * scale);
 
-        // Tacka na površini slike kursora koja se ponaša kao hitboks
-        int hotspotX = TextureWidth / 5;
-        int hotspotY = TextureHeight / 6;
+        if (canvasSize < 1) canvasSize = 1;
+
+        unsigned char* rotatedData = new unsigned char[canvasSize * canvasSize * 4];
+        memset(rotatedData, 0, canvasSize * canvasSize * 4);
+
+        // Center points
+        float origCenterX = TextureWidth / 2.0f;
+        float origCenterY = TextureHeight / 2.0f;
+        float canvasCenter = canvasSize / (2.0f * scale);
+
+
+        float angle = M_PI / 4.0f;
+        float cosA = cosf(angle);
+        float sinA = sinf(angle);
+
+        for (int y = 0; y < canvasSize; y++) {
+            for (int x = 0; x < canvasSize; x++) {
+                float normX = (x / scale) - canvasCenter;
+                float normY = (y / scale) - canvasCenter;
+
+                float srcX = normX * cosA + normY * sinA + origCenterX;
+                float srcY = -normX * sinA + normY * cosA + origCenterY;
+
+                int srcXi = static_cast<int>(srcX + 0.5f);
+                int srcYi = static_cast<int>(srcY + 0.5f);
+
+                if (srcXi >= 0 && srcXi < TextureWidth && srcYi >= 0 && srcYi < TextureHeight) {
+                    int srcIndex = (srcYi * TextureWidth + srcXi) * 4;
+                    int dstIndex = (y * canvasSize + x) * 4;
+
+                    rotatedData[dstIndex] = ImageData[srcIndex];
+                    rotatedData[dstIndex + 1] = ImageData[srcIndex + 1];
+                    rotatedData[dstIndex + 2] = ImageData[srcIndex + 2]; 
+                    rotatedData[dstIndex + 3] = ImageData[srcIndex + 3];
+                }
+            }
+        }
+
+        GLFWimage image;
+        image.width = canvasSize;
+        image.height = canvasSize;
+        image.pixels = rotatedData;
+
+        float hotX = TextureWidth / 5.0f;
+        float hotY = TextureHeight / 6.0f;
+
+        float relX = hotX - origCenterX;
+        float relY = hotY - origCenterY;
+
+        float rotatedHotX = relX * cosA - relY * sinA;
+        float rotatedHotY = relX * sinA + relY * cosA;
+
+        int hotspotX = static_cast<int>((rotatedHotX + canvasCenter) * scale + 0.5f);
+        int hotspotY = static_cast<int>((rotatedHotY + canvasCenter) * scale + 0.5f);
+
+        // Clamp to canvas bounds
+        if (hotspotX < 0) hotspotX = 0;
+        if (hotspotX >= canvasSize) hotspotX = canvasSize - 1;
+        if (hotspotY < 0) hotspotY = 0;
+        if (hotspotY >= canvasSize) hotspotY = canvasSize - 1;
 
         GLFWcursor* cursor = glfwCreateCursor(&image, hotspotX, hotspotY);
+
+        delete[] rotatedData;
         stbi_image_free(ImageData);
+
         return cursor;
     }
     else {
         std::cout << "Kursor nije ucitan! Putanja kursora: " << filePath << std::endl;
-        stbi_image_free(ImageData);
-
+        return nullptr;
     }
 }

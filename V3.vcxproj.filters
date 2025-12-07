@@ -85,13 +85,13 @@
     <Image Include="res\chest-closed.png">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="res\anchor.png">
-      <Filter>Resource Files</Filter>
-    </Image>
     <Image Include="res\signature.png">
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="res\signature-cyrillic.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\anchor.png">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

@@ -62,7 +62,6 @@ unsigned bubblesTexture;
 unsigned burgerTexture;
 unsigned sandTexture;
 unsigned grassTexture;
-unsigned anchorTexture;
 float grassHeight = 0.15f;
 
 // Mouse cursor position
@@ -389,7 +388,6 @@ void drawAquarium() {
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     glDeleteVertexArrays(1, &VAO_glass);
 
-    // Black borders
     glUniform4f(glGetUniformLocation(colorShader, "uColor"), 0.0f, 0.0f, 0.0f, 1.0f);
     float borderThickness = 10.0f / screenHeight * 2.0f;
 
@@ -529,6 +527,45 @@ void drawSignatureRectangle(unsigned int colorShader, unsigned int VAOrect) {
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 }
 
+void drawSideEdgesSimple(unsigned int colorShader, unsigned int VAOrect) {
+    glUseProgram(colorShader);
+
+    glUniform4f(glGetUniformLocation(colorShader, "uColor"), 0.0f, 0.0f, 0.0f, 1.0f);
+
+    float verticesLeft[] = {
+        -1.0f, aquariumTop,
+        -1.0f, -1.0f,
+        -0.99f, -1.0f,
+        -0.99f, aquariumTop
+    };
+
+    unsigned int VAO_left;
+    formSimpleRectVAO(verticesLeft, sizeof(verticesLeft), VAO_left);
+
+    glUniform1f(glGetUniformLocation(colorShader, "uX"), 0.0f);
+    glUniform1f(glGetUniformLocation(colorShader, "uY"), 0.0f);
+    glUniform1f(glGetUniformLocation(colorShader, "uS"), 1.0f);
+
+    glBindVertexArray(VAO_left);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    glDeleteVertexArrays(1, &VAO_left);
+
+    // Right edge
+    float verticesRight[] = {
+        0.99f, aquariumTop,
+        0.99f, -1.0f,
+        1.0f, -1.0f,
+        1.0f, aquariumTop
+    };
+
+    unsigned int VAO_right;
+    formSimpleRectVAO(verticesRight, sizeof(verticesRight), VAO_right);
+
+    glBindVertexArray(VAO_right);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    glDeleteVertexArrays(1, &VAO_right);
+}
+
 
 void squish_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (action == GLFW_PRESS) {
@@ -582,7 +619,7 @@ void processMovement(GLFWwindow* window) {
     }
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
         uY += MOVEMENT_SPEED;
-        uY = std::min(uY, aquariumTop - 0.1f);
+        uY = std::min(uY, aquariumTop - 0.3f);
     }
 
     // Clownfish movement
@@ -608,11 +645,12 @@ void processMovement(GLFWwindow* window) {
     }
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
         cY += MOVEMENT_SPEED;
-        cY = std::min(cY, aquariumTop - 0.1f);
+        cY = std::min(cY, aquariumTop - 0.3f);
     }
 }
 
 GLFWcursor* cursor;
+GLFWcursor* cursorPressed;
 
 int main()
 {
@@ -630,7 +668,7 @@ int main()
     glfwSetKeyCallback(window, squish_callback);
     glfwSetCursorPosCallback(window, cursor_position_callback);
 
-    cursor = loadImageToCursor("res/cursor.png");
+    cursor = loadImageToCursor("res/anchor.png", 0.15f);
     glfwSetCursor(window, cursor);
 
     // Hide default cursor
@@ -694,6 +732,7 @@ int main()
     formVAOs(verticesSand, sizeof(verticesSand), VAO_sand);
     formVAOs(verticesGrass, sizeof(verticesGrass), VAO_grass);
 
+
     glClearColor(0.9f, 0.9f, 0.9f, 1.0f);
 
     float lastTime = glfwGetTime();
@@ -710,9 +749,11 @@ int main()
 
         glClear(GL_COLOR_BUFFER_BIT);
 
-        drawAquarium();
+        drawAquarium();    
 
         drawSand(rectShader, VAO_sand);
+
+        drawSideEdgesSimple(colorShader, VAO_fish);
 
         drawGrass(rectShader, VAO_grass);
 
@@ -734,8 +775,6 @@ int main()
                 drawBubble(rectShader, VAO_bubbles, bubble);
             }
         }
-
-        // Draw anchor cursor (LAST so it's on top of everything)
 
         glfwSwapBuffers(window);
         glfwPollEvents();
