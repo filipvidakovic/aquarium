@@ -630,7 +630,7 @@ int main()
     glfwSetKeyCallback(window, squish_callback);
     glfwSetCursorPosCallback(window, cursor_position_callback);
 
-    cursor = loadImageToCursor("res/anchor.png");
+    cursor = loadImageToCursor("res/cursor.png");
     glfwSetCursor(window, cursor);
 
     // Hide default cursor
